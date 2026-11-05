@@ -51,8 +51,6 @@
 #include "FormData.h"
 #include "Frame.h"
 
-constexpr const char kDefaultServerList[] = "https://servers-frontend.fivem.net/api/serverlist/ingress";
-
 static fx::GameServer* g_gameServer;
 
 extern fwEvent<> OnEnetReceive;
@@ -117,18 +115,7 @@ namespace fx
 		m_playersToken = instance->AddVariable<std::string>("sv_playersToken", ConVar_None, "");
 		m_profileDataToken = instance->AddVariable<std::string>("sv_profileDataToken", ConVar_None, "");
 		m_hostname = instance->AddVariable<std::string>("sv_hostname", ConVar_ServerInfo, "default FXServer");
-		m_masters[0] = instance->AddVariable<std::string>("sv_master1", ConVar_None, kDefaultServerList);
-		m_masters[1] = instance->AddVariable<std::string>("sv_master2", ConVar_None, "");
-		m_masters[2] = instance->AddVariable<std::string>("sv_master3", ConVar_None, "");
-		m_listingIpOverride = instance->AddVariable<std::string>("sv_listingIpOverride", ConVar_None, "");
 		m_useAccurateSendsVar = instance->AddVariable<bool>("sv_useAccurateSends", ConVar_None, true);
-
-		// sv_forceIndirectListing will break listings if the proxy host can not be reached
-		m_forceIndirectListing = instance->AddVariable<bool>("sv_forceIndirectListing", ConVar_None, false);
-
-		// sv_listingHostOverride specifies a host to use as reverse proxy endpoint instead of the default
-		// reverse TCP server
-		m_listingHostOverride = instance->AddVariable<std::string>("sv_listingHostOverride", ConVar_None, "");
 
 		m_heartbeatCommand = instance->AddCommand("heartbeat", [=]()
 		{
@@ -261,36 +248,6 @@ namespace fx
 		}, 100);
 
 		m_clientRegistry = instance->GetComponent<ClientRegistry>().GetRef();
-
-		std::thread([=]()
-		{
-			while (true)
-			{
-				for (auto& master : m_masters)
-				{
-					// if the master is set
-					std::string masterName = master->GetValue();
-
-					if (!masterName.empty() && masterName.find("https://") != 0 && masterName.find("http://") != 0)
-					{
-						// look up if not cached
-						auto address = net::PeerAddress::FromString(masterName, 30110, net::PeerAddress::LookupType::ResolveName);
-
-						if (address)
-						{
-							if (m_masterCache[masterName] != *address)
-							{
-								trace("Resolved %s to %s\n", masterName, address->ToString());
-
-								m_masterCache[masterName] = *address;
-							}
-						}
-					}
-				}
-
-				std::this_thread::sleep_for(60s);
-			}
-		}).detach();
 
 		if (m_net->SupportsUvUdp())
 		{
@@ -963,120 +920,6 @@ namespace fx
 			}
 		}
 
-		// if we should heartbeat
-		if (msec() >= m_nextHeartbeatTime)
-		{
-			auto sendHttpHeartbeat = [this](std::string_view masterName, bool isPrivate)
-			{
-				auto var = m_instance->GetComponent<console::Context>()->GetVariableManager()->FindEntryRaw("sv_licenseKeyToken");
-
-				if (var && !var->GetValue().empty())
-				{
-					console::DPrintf("citizen-server-impl", "Sending heartbeat to %s\n", masterName);
-
-					nlohmann::json playersJson, infoJson, dynamicJson;
-					auto ihh = m_instance->GetComponent<InfoHttpHandlerComponent>();
-					ihh->GetJsonData(&infoJson, &dynamicJson, &playersJson);
-
-					auto json = nlohmann::json::object({
-						{ "port", m_instance->GetComponent<fx::TcpListenManager>()->GetPrimaryPort() },
-						{ "listingToken", m_instance->GetComponent<ServerLicensingComponent>()->GetListingToken() },
-						{ "ipOverride", m_listingIpOverride->GetValue() },
-						{ "private", isPrivate },
-						{ "fallbackData", nlohmann::json::object({
-							{ "players", playersJson },
-							{ "info", infoJson },
-							{ "dynamic", dynamicJson },
-						})}
-					});
-
-					if (!m_listingHostOverride->GetValue().empty())
-					{
-						json["forceIndirectListing"] = m_forceIndirectListing->GetValue();
-						json["hostOverride"] = m_listingHostOverride->GetValue();
-					}
-					else if (m_forceIndirectListing->GetValue())
-					{
-						console::Printf("citizen-server-impl", "^1Error: Force indirect listing is enabled, but no host override is set. This is not supported!^7\n");
-					}
-
-					HttpRequestOptions ro;
-					ro.ipv4 = true;
-					ro.headers = std::map<std::string, std::string>{
-						{ "Content-Type", "application/json; charset=utf-8" }
-					};
-					ro.addErrorBody = true;
-
-					static bool firstRun = true;
-
-					Instance<HttpClient>::Get()->DoPostRequest(std::string{ masterName }, json.dump(), ro, [](bool success, const char* d, size_t s)
-					{
-						if (!success)
-						{
-							console::DPrintf("citizen-server-impl", "error submitting to ingress: %s\n", std::string{ d, s });
-							return;
-						}
-
-						try
-						{
-							// don't return a query error for the first run (may be residual)
-							if (!firstRun)
-							{
-								auto j = nlohmann::json::parse(d, d + s);
-								if (j.is_object() && j.contains("lastError"))
-								{
-									auto lastError = j["lastError"].get<std::string>();
-									console::Printf("citizen-server-impl", "^1Server list query returned an error: %s^7\n", lastError.substr(0, lastError.find_first_of("\r\n")));
-								}
-							}
-						}
-						catch (...)
-						{
-						}
-
-						firstRun = false;
-					});
-				}
-			};
-
-			bool isPrivate = true;
-
-			// loop through each master
-			for (auto& master : m_masters)
-			{
-				// if the master is set
-				std::string masterName = master->GetValue();
-
-				if (!masterName.empty())
-				{
-					if (masterName.find("https://") != 0 && masterName.find("http://") != 0)
-					{
-						// find a cached address
-						auto it = m_masterCache.find(masterName);
-
-						if (it != m_masterCache.end())
-						{
-							// send a heartbeat to the master
-							SendOutOfBand(it->second, "heartbeat DarkPlaces\n");
-
-							console::DPrintf("citizen:server:impl", "Sending (old style) heartbeat to %s\n", masterName);
-						}
-					}
-					else if (masterName != kDefaultServerList)
-					{
-						sendHttpHeartbeat(masterName, isPrivate);
-					}
-					else
-					{
-						isPrivate = false;
-					}
-				}
-			}
-
-			sendHttpHeartbeat(kDefaultServerList, isPrivate);
-			m_nextHeartbeatTime = msec() + 3min;
-		}
-
 		{
 			auto ctx = GetInstance()->GetComponent<console::Context>();
 
@@ -1185,20 +1028,10 @@ namespace fx
 
 	void GameServer::ForceHeartbeat()
 	{
-		m_nextHeartbeatTime = 0ms;
 	}
 
 	void GameServer::ForceHeartbeatSoon()
 	{
-		auto now = msec();
-		auto soon = (now + 15s);
-
-		// if the next heartbeat is not sooner-than-soon...
-		if (m_nextHeartbeatTime > soon)
-		{
-			// set it to execute soon
-			m_nextHeartbeatTime = soon;
-		}
 	}
 
 	void GameServer::SendOutOfBand(const net::PeerAddress& to, const std::string_view& oob, bool prefix)

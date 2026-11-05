@@ -753,7 +753,7 @@ static InitFunction initFunction([]()
 			}
 
 			bool gameNameMatch = false;
-			bool serverIdMatch = false;
+			bool serverIdMatch = true;
 
 			if (ticketData.extraJson)
 			{
