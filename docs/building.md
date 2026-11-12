@@ -24,7 +24,7 @@ Then, execute the following commands in a `cmd.exe` shell to set up the build en
 
 ```bat
 git clone https://github.com/nomnix/freem.git -c core.symlinks=true
-cd fivem
+cd freem
 git submodule update --jobs=16 --init
 
 :: if you're using Python 3.12 or higher make sure you install the setuptools package
