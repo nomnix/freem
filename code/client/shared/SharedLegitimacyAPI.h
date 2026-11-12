@@ -17,8 +17,21 @@ void DLL_IMPORT AuthenticateDiscourse(const char* clientId, const char* authToke
 bool DLL_IMPORT ShouldProcessHeaders(const char* hostname);
 void DLL_IMPORT ProcessHeaders(char*, char*);
 
-// New Steam Auth
-bool DLL_IMPORT IsSteamLinked();
-void DLL_IMPORT AttemptSteamAuth(const std::function<void(std::pair<std::string, std::string>)>& callback, bool forceAuth);
-void DLL_IMPORT RefreshIdentities();
+// New Steam Auth (stubs for missing legitimacy.dll exports)
+inline bool IsSteamLinked()
+{
+	return false;
+}
+
+inline void AttemptSteamAuth(const std::function<void(std::pair<std::string, std::string>)>& callback, bool forceAuth)
+{
+	if (callback)
+	{
+		callback({ "Steam auth is currently unavailable (stub)", "" });
+	}
+}
+
+inline void RefreshIdentities()
+{
+}
 }
