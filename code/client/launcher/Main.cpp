@@ -127,6 +127,81 @@ void DLLError(DWORD errorCode, std::string_view dllName)
 #include "OSChecks.h"
 #endif
 
+// checks whether the command line contains a `+connect` argument (as in `FiveM.exe +connect ip:port`)
+static bool HasConnectArgument(const wchar_t* commandLine)
+{
+	static const wchar_t* connectArgument = L"+connect";
+	const size_t connectArgumentLength = wcslen(connectArgument);
+
+	for (auto it = commandLine; (it = wcsstr(it, connectArgument)) != nullptr; it += connectArgumentLength)
+	{
+		const wchar_t nextChar = it[connectArgumentLength];
+
+		// only treat it as a launch target if this is a whole argument
+		if (nextChar == L'\0' || nextChar == L' ' || nextChar == L'\t' || nextChar == L'"')
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+// Direct launch of the executable is not supported: the client may only be started with an
+// explicit connection target, which is what a launcher passes along (`FiveM.exe +connect ip:port`).
+static bool IsDirectLaunchBlocked()
+{
+#if !defined(LAUNCHER_PERSONALITY_MAIN) && !defined(LAUNCHER_PERSONALITY_GAME)
+	return false;
+#else
+	if (getenv("CitizenFX_ToolMode") != nullptr)
+	{
+		return false;
+	}
+
+	const wchar_t* commandLine = GetCommandLineW();
+
+	// helper modes of this very executable (updater, installer, crash handler, developer kit)
+	static const wchar_t* allowedArguments[] = {
+		L"-bootstrap",
+		L"-masterinstall",
+		L"-uninstall",
+		L"-doUninstall",
+		L"-switchcl",
+		L"-fxdk",
+		L"-dumpserver",
+		L"-parentpid:",
+		L"-dump_exe",
+		L"-find_ep",
+	};
+
+	for (auto argument : allowedArguments)
+	{
+		if (wcsstr(commandLine, argument) != nullptr)
+		{
+			return false;
+		}
+	}
+
+	// protocol handler invocations, e.g. `FiveM.exe "fivem://connect/ip:port"`
+	if (wcsstr(commandLine, L"://") != nullptr)
+	{
+		return false;
+	}
+
+	// copies of this executable that live in `data/cache/subprocess` are spawned by the client itself
+	wchar_t moduleName[MAX_PATH];
+	GetModuleFileNameW(GetModuleHandle(nullptr), moduleName, std::size(moduleName));
+
+	if (wcsstr(moduleName, L"subprocess") != nullptr)
+	{
+		return false;
+	}
+
+	return !HasConnectArgument(commandLine);
+#endif
+}
+
 int RealMain()
 {
 #ifdef LAUNCHER_PERSONALITY_MAIN
@@ -138,6 +213,18 @@ int RealMain()
 		return 100;
 	}
 #endif
+
+	// do not allow starting the client by simply opening the executable
+	if (IsDirectLaunchBlocked())
+	{
+		MessageBoxW(nullptr,
+			L"Прямой запуск недоступен.\n\n"
+			L"Запустите игру через лаунчер:\n"
+			PRODUCT_NAME L".exe +connect ip:port",
+			PRODUCT_NAME, MB_OK | MB_ICONERROR);
+
+		return 1;
+	}
 
 	if (auto setSearchPathMode = (decltype(&SetSearchPathMode))GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "SetSearchPathMode"))
 	{

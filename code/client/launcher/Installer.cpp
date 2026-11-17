@@ -206,7 +206,7 @@ bool Install_PerformInstallation()
 		STARTUPINFO si = { sizeof(si) };
 		PROCESS_INFORMATION pi;
 
-		if (CreateProcess(nullptr, const_cast<wchar_t*>(va(L"\"%s\"", targetExePath)),
+		if (CreateProcess(nullptr, const_cast<wchar_t*>(va(L"\"%s\" -masterinstall", targetExePath)),
 			nullptr, nullptr, FALSE, CREATE_BREAKAWAY_FROM_JOB | CREATE_SUSPENDED, nullptr, nullptr, &si, &pi))
 		{
 			static HostSharedData<CfxState> hostData("CfxInitState");
