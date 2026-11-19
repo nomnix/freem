@@ -15,7 +15,6 @@ To build FiveM, RedM or FXServer on Windows you need the following dependencies:
   
   You can install these workloads by going to "Tools" -> "Get Tools and Features..." -> Check the checkboxes -> Click "Modify" in the bottom right corner.
   
-* [PowerShell 7](https://aka.ms/powershell-release?tag=stable) or higher.
 * [Python 3.8 or higher](https://python.org/) with the `py` launcher installed.
 * [MSYS2](https://www.msys2.org/) at `C:\msys64\` which is where the installer places it.
 * [Node.js](https://nodejs.org/en/download/) and [Yarn](https://classic.yarnpkg.com/en/docs/install/) in your PATH as `node` and `yarn`.
@@ -31,15 +30,31 @@ git submodule update --jobs=16 --init
 pip install setuptools
 
 :: downloads the right Chrome version for 64-bit projects
-fxd get-chrome
+python mgr.py get-chrome
 
 :: build bindings of game natives.
 prebuild
 
 :: or -game server/-game rdr3
-fxd gen -game five
-fxd vs -game five
+python mgr.py gen -game five
+python mgr.py vs -game five
 ```
+
+`mgr` is a small Python CLI that wraps the common developer tasks. It needs no
+extra packages, and `python mgr.py help` lists every command:
+
+* `python mgr.py gen [-game five|server|rdr3|ny]` - (re)generates the Visual Studio project files.
+* `python mgr.py build [-configuration Debug] [-game five]` - builds the solution with MSBuild.
+* `python mgr.py vs [-game five]` - opens the generated solution in Visual Studio.
+* `python mgr.py get-chrome` - downloads the CEF dependency into `vendor/cef`.
+* `python mgr.py natives` - downloads and regenerates the natives bindings.
+* `python mgr.py dev-sdk` - starts the FxDK development server.
+* `python mgr.py run-sdk` - starts the built client against the FxDK development server.
+* `python mgr.py wsl-build [-rebuild]` - builds an FXServer build for Linux inside WSL.
+* `python mgr.py wsl-run <path> [-withdebugger]` - runs the WSL FXServer build.
+
+Pass `--dry-run` to any command to only print the commands it would execute, and
+`-?` to a command to see its own help.
 
 ### Set up data files for `five`
 
@@ -80,4 +95,4 @@ If you don't know how to do that, here's how:
 - error CS0234: The type or namespace name 'API' does not exist in the namespace 'CitizenFX.Core.Native' (are you missing an assembly reference?)
 - error CS0246: The type or namespace name 'Hash' could not be found (are you missing a using directive or an assembly reference?)
 
-  `fxd gen` ran before `prebuild`. Close the solution, re-run `fxd gen` and then reopen & build the solution again.
+  `python mgr.py gen` ran before `prebuild`. Close the solution, re-run `python mgr.py gen` and then reopen & build the solution again.

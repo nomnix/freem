@@ -194,5 +194,6 @@ privates_config.lua
 
 # python files
 *.pyc
+__pycache__/
 
 /vendor/libuv/bin/libuv.*
