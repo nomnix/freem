@@ -37,7 +37,12 @@ prebuild
 
 :: or -game server/-game rdr3
 python mgr.py gen -game five
-python mgr.py vs -game five
+
+:: build the client from the command line
+python mgr.py build
+
+:: or open the generated solution in Visual Studio
+python mgr.py vs
 ```
 
 `mgr` is a small Python CLI that wraps the common developer tasks. It needs no
