@@ -10,7 +10,7 @@ To build FiveM, RedM or FXServer on Windows you need the following dependencies:
     - Desktop development with C++
     - Windows application development
   - Individual components
-    - .NET Framework 4.6 targeting pack
+    - .NET Framework 4.8 targeting pack
     - Windows 11 SDK (10.0.22000.0)
   
   You can install these workloads by going to "Tools" -> "Get Tools and Features..." -> Check the checkboxes -> Click "Modify" in the bottom right corner.
@@ -38,11 +38,12 @@ prebuild
 :: or -game server/-game rdr3
 python mgr.py gen -game five
 
-:: build the client from the command line
+:: build the client from the command line or python mgr.py build -game server
 python mgr.py build
 
 :: or open the generated solution in Visual Studio
-python mgr.py vs
+python mgr.py vs -game five
+
 ```
 
 `mgr` is a small Python CLI that wraps the common developer tasks. It needs no
