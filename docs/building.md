@@ -35,14 +35,18 @@ python mgr.py get-chrome
 :: build bindings of game natives.
 prebuild
 
-:: or -game server/-game rdr3
+:: or -game server
 python mgr.py gen -game five
 
-:: build the client from the command line or python mgr.py build -game server
+:: build the client from the command line
 python mgr.py build
+::or
+python mgr.py build -game server
 
 :: or open the generated solution in Visual Studio
 python mgr.py vs -game five
+::or
+python mgr.py vs -game server
 
 ```
 

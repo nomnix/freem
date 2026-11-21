@@ -2,7 +2,7 @@
 
 #if defined(GTA_FIVE) || defined(IS_RDR3)
 
-#include <SharedLegitimacyAPI.h>
+#include <SharedLegitimacyAPI.h> // от сюда лезет проприетарный legitimacy.dll
 #include <CL2LaunchMode.h>
 #include <json.hpp>
 #include <skyr/url.hpp>

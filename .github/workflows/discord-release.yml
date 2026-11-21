@@ -1,14 +1,18 @@
-name: Discord Release Notification
+name: Discord Release & Commit Notification
 
 on:
   release:
     types: [published]
+  push:
+    branches:
+      - main
 
 jobs:
-  notify-discord:
+  notify-discord-release:
+    if: github.event_name == 'release'
     runs-on: ubuntu-latest
     steps:
-      - name: Send Discord Webhook
+      - name: Send Discord Release Webhook
         uses: Ilshidur/action-discord@master
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
@@ -19,3 +23,20 @@ jobs:
             **Версия:** ${{ github.event.release.name || github.event.release.tag_name }}
             
             🔗 [Ссылка на релиз](${{ github.event.release.html_url }})
+
+  notify-discord-commit:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Discord Commit Webhook
+        uses: Ilshidur/action-discord@master
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_COMMIT_WEBHOOK_URL }}
+        with:
+          args: |
+            💻 **Новый коммит в ветку `${{ github.ref_name }}`!**
+            **Репозиторий:** ${{ github.repository }}
+            **Автор:** ${{ github.event.head_commit.author.name }}
+            **Сообщение:** ${{ github.event.head_commit.message }}
+            
+            🔗 [Посмотреть коммит](${{ github.event.head_commit.url }})
