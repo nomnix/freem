@@ -18,11 +18,10 @@ jobs:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
         with:
           args: |
-            🚀 **Новый релиз на GitHub!**
-            **Репозиторий:** ${{ github.repository }}
+            **Новый релиз на GitHub!**
             **Версия:** ${{ github.event.release.name || github.event.release.tag_name }}
             
-            🔗 [Ссылка на релиз](${{ github.event.release.html_url }})
+            [Ссылка на релиз](${{ github.event.release.html_url }})
 
   notify-discord-commit:
     if: github.event_name == 'push'
@@ -34,9 +33,8 @@ jobs:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_COMMIT_WEBHOOK_URL }}
         with:
           args: |
-            💻 **Новый коммит в ветку `${{ github.ref_name }}`!**
-            **Репозиторий:** ${{ github.repository }}
-            **Автор:** ${{ github.event.head_commit.author.name }}
+            **Новый коммит в ветку `${{ github.ref_name }}`**
+
             **Сообщение:** ${{ github.event.head_commit.message }}
             
-            🔗 [Посмотреть коммит](${{ github.event.head_commit.url }})
+            [Посмотреть коммит](${{ github.event.head_commit.url }})
